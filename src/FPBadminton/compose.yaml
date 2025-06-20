@@ -1,0 +1,6 @@
+﻿services:
+  fpbadminton:
+    image: fpbadminton
+    build:
+      context: .
+      dockerfile: Dockerfile
