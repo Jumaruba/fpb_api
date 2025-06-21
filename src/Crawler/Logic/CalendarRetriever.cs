@@ -9,13 +9,17 @@ public class CalendarRetriever
     private readonly string _page;
     private readonly HtmlWeb _web;
 
+    /// <summary>
+    /// Class responsible for retrieving and parsing the badminton calendar for the current year.
+    /// </summary>
+    /// <param name="page"></param>
     public CalendarRetriever(string page = "https://fpbadminton.pt/")
     {
         _page = page;
         _web = new HtmlWeb();
     }
 
-    public List<Event> GetCalendar()
+    public List<FpbEvent> GetCalendar()
     {
         var html = _web.Load(_page);
         var tables = html.DocumentNode.SelectNodes("//table");
@@ -27,9 +31,7 @@ public class CalendarRetriever
         if (headers == null || headers.Count == 0)
             throw new NullReferenceException("No headers found.");
         
-        var data = GetData(tables[1], headers);
-
-        return data;
+        return GetData(tables[1], headers);
     }
 
     /// <summary>
@@ -44,17 +46,17 @@ public class CalendarRetriever
     }
 
     #region Data
-    private List<Event> GetData(HtmlNode table, List<string> headers)
+    private List<FpbEvent> GetData(HtmlNode table, List<string> headers)
     {
         var rows = table.SelectNodes(".//tbody/tr");
         if (rows == null)
             return [];
         
-        var result = new List<Event>();
+        var result = new List<FpbEvent>();
         foreach (var data in rows)
         {
             var cells = data.SelectNodes(".//td")?.Select(n => n.InnerText).ToList();
-            result.Add(new Event(cells, headers));
+            result.Add(new FpbEvent(cells, headers));
         }
 
         return result;
