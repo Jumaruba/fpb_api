@@ -1,6 +1,6 @@
 using System.Globalization;
+using Crawler;
 using Google.Apis.Calendar.v3.Data;
-using GoogleCalendarDealer.Logic;
 
 namespace GoogleCalendarDealer.Handlers
 {
@@ -19,12 +19,12 @@ namespace GoogleCalendarDealer.Handlers
                 .ToString("yyyy-MM-dd");
         }
         
-        public static Event CreateEvent(Crawler.Logic.FpbEvent e)
+        public static Event CreateEvent(FpbEvent e)
         {
             return new Event
             {
                 Summary = e.EventName,
-                Description = Utils.ArrayAsString(e.Local),
+                Description = e.Description,
                 End = new EventDateTime { Date = GetActualEndDate(e.EndDate)},
                 Start = new EventDateTime { Date= e.StartDate },
             };

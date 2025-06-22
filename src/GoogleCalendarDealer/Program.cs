@@ -1,4 +1,5 @@
-﻿using Crawler.Logic;
+﻿using Crawler;
+using Crawler.PdfParser;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
 using GoogleCalendarDealer.Handlers;
@@ -12,43 +13,90 @@ class Program
     public static async Task Main(string[] args)
     {
         BuildSettings();
-        var calendarRetriever = new CalendarRetriever(_settings.Website);
-
         var auth = new Auth();
         await auth.Authenticate();
+        
+        if (args.Contains("/add"))
+            await AddEventsToCalendar(auth);
 
+        if (args.Contains("/delete"))
+            await DeleteEvents(auth);
+
+    }
+
+    #region Operations
+    private static async Task DeleteEvents(Auth auth)
+    {
+        Console.WriteLine("Deleting entire calendar...");
         var calendarId = _settings.CalendarId;
         var request = auth.Service.Events.List(calendarId);
-        request.TimeMinDateTimeOffset = DateTimeOffset.Now;
-        var googleEvents = await request.ExecuteAsync();
-        var fpbEvents = calendarRetriever.GetCalendar();
-
-        var calendarMergeResult = CalendarMerge.Merge(googleEvents, fpbEvents);
-        await ApplyUpdates(auth, calendarMergeResult.Updates, calendarId);
-        await ApplyAdditions(auth, calendarMergeResult.Additions, calendarId);
-    }
-
-    private static async Task ApplyUpdates(Auth auth, Dictionary<string, Event> updates, string calendarId)
-    {
-        var service = auth.Service;
-        foreach (var updatedEvent in updates)
+        var events = await request.ExecuteAsync();
+        foreach (var e in events.Items)
         {
-            var request = service.Events.Update(updatedEvent.Value, calendarId, updatedEvent.Key);
-            Console.WriteLine($"Updating {updatedEvent.Value.Summary}...");
-            await request.ExecuteAsync();
+            if (DateTime.Parse(e.Start.Date).Year != DateTime.Now.Year)
+                continue;
+            var deleteRequest = auth.Service.Events.Delete(calendarId, e.Id);
+            Console.WriteLine($"{e.Summary}");
+            await deleteRequest.ExecuteAsync();
         }
+        Console.WriteLine("Deleted entire calendar.");
     }
 
-    private static async Task ApplyAdditions(Auth auth, List<Event> additions, string calendarId)
+    private static async Task AddEvents(Auth auth, IEnumerable<Event> additions, string calendarId)
     {
         var service = auth.Service;
         foreach (var newEvent in additions)
         {
+            UpdateEventColor(newEvent);
             var request = service.Events.Insert(newEvent, calendarId);
             Console.WriteLine($"Adding {newEvent.Summary}...");
             await request.ExecuteAsync();
         }
     }
+    
+    #endregion
+
+    private static void UpdateEventColor(Event e)
+    {
+        if (e.Summary.Contains("BWF"))
+            e.ColorId = "8";    // grey,graphite
+        if (e.Summary.Contains("Torneio de Clube"))
+            e.ColorId = "9";    // blueberry
+        if (e.Summary.Contains("Jornada Nacional") || e.Summary.Contains("Campeonato Nacional"))
+            e.ColorId = "11";   // red, tomato
+        if (e.Summary.Contains("Zonal"))
+            e.ColorId = "10";   // green,basil
+
+    }
+    private static async Task AddEventsToCalendar(Auth auth)
+    {
+        Console.WriteLine("Adding events to calendar...");
+        var calendarId = _settings.CalendarId;
+        var request = auth.Service.Events.List(calendarId);
+        request.TimeMinDateTimeOffset = DateTimeOffset.Now;
+
+        var fpbEvents = GetEventsFromPdf();
+        var flattenFpbEvents = fpbEvents.SelectMany(x => x).ToList();
+        var googleEventsToAdd = flattenFpbEvents.Select(fpbEvent => GoogleEventHandler.CreateEvent(fpbEvent));
+        
+        await AddEvents(auth, googleEventsToAdd, calendarId);
+        Console.WriteLine("Events added to calendar.");
+    }
+
+    private static List<List<FpbEvent>> GetEventsFromPdf()
+    {
+        var pdfCrawler = new PdfCrawler();
+        var downloadDirectory = Path.Combine(Directory.GetCurrentDirectory(), _settings.DownloadDirectory);
+        pdfCrawler.DownloadPdf(downloadDirectory);
+
+        // Combine directory
+        var filePath = Path.Combine(downloadDirectory, pdfCrawler.PdfFileName);
+        var parser = new Parser();
+        var pages = parser.ReadPdfPages(filePath);
+        return parser.ParsePdf(pages);
+    }
+
+
 
     private static void BuildSettings()
     {

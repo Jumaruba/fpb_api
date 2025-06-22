@@ -1,24 +1,18 @@
-using Crawler.Logic;
-
 namespace TestCrawler;
 
 public class Tests
 {
-    private CalendarRetriever _calendarRetriever;
     [SetUp]
     public void Setup()
     {
-        _calendarRetriever = new CalendarRetriever();
     }
 
     [Test]
     public void GetCalendar()
     {
-        
-        var page = _calendarRetriever.GetCalendar();
-        foreach (var line in page)
-        {
-
-        }
+        /*var pdfParser = new Parser(2025);
+        var pdfContent = pdfParser.ReadPdfPages();
+        pdfParser.ParsePdf(pdfContent);
+        */
     }
 }
