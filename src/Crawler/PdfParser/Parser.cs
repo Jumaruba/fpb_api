@@ -128,12 +128,20 @@ public class Parser
     {
         var description = new StringBuilder();
         var isNewEvent = true;
+
         if (pos < events.Count)
-            isNewEvent = FpbEvent.ParseEventName(events[pos],  out _);
+        {
+            isNewEvent = FpbEvent.ParseEventName(events[pos], out _);
+            // Tries to set the subscription data for single line events.
+            SetSubscriptionDatesIfAny(events[pos], ref description);
+        }
+        else
+            return "";
+
         while (pos < events.Count && !isNewEvent)
         {
             // If it is not a date, should go to the description without any formatation.
-            if (!GetSubscriptionDates(events[pos], ref description))
+            if (!SetSubscriptionDatesIfAny(events[pos], ref description))
                 description.AppendLine(events[pos].Trim());
             pos++;
             if (pos < events.Count)
@@ -142,15 +150,15 @@ public class Parser
         return description.ToString();
     }
 
-    private bool GetSubscriptionDates(string line, ref StringBuilder sb)
+    private bool SetSubscriptionDatesIfAny(string line, ref StringBuilder sb)
     {
         List<string> dateHeads = ["Start subscription", "End subscription", "Withdrawal limit without fine"];
-        var matches = Regex.IsMatch(line, @"^(\d{1,2}\/\d{1,2}\/\d{2,4}\s?){1,3}$");
+        var matches = Regex.Match(line, @"(\d{1,2}\/\d{1,2}\/\d{2,4}\s?){1,3}$");
         // There are no dates specified.
-        if (!matches)
+        if (!matches.Success)
             return false;
 
-        var dates = line.Split(" ");
+        var dates = matches.Groups[0].Value.Split(" ");
         for (var i = 0; i < dates.Length; i++)
         {
             sb.Append($"{dateHeads[i]}: {dates[i]}\n");

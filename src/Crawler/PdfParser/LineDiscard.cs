@@ -44,6 +44,10 @@ public class LineDiscard
         if (_linesToDiscard.Contains(line))
             return true;
 
+        // This the last line of the PDF.
+        if (Regex.IsMatch(line, @"FPB \d{1,2}\/\d{1,2}\/\d{2,4}\s?$"))
+            return true;
+
         // At the end of each page, there is indication of currentPage/totalPages;
         // We want to discard this.
         return Regex.IsMatch(line, @"^\d/\d$");
