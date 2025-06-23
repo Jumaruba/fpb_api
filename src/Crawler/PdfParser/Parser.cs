@@ -72,6 +72,9 @@ public class Parser
                 monthEventLines.Add(line);
             }
         }
+        
+        var (lastMonthEvents, _) = ParseEventsInMonth(monthEventLines, currentMonth, eventsToJump);
+        result.Add(lastMonthEvents);
 
         return result;
     }
